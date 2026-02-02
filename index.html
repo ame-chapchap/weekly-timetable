@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>週間タイムテーブル</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Base colors - Light theme */
+      --bg-primary: #fafafa;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f5f5f5;
+      --text-primary: #1a1a1a;
+      --text-secondary: #666666;
+      --text-muted: #999999;
+      --border-color: #e5e5e5;
+      --border-light: #f0f0f0;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+      
+      /* Event colors */
+      --color-blue: #3B82F6;
+      --color-green: #22C55E;
+      --color-yellow: #EAB308;
+      --color-orange: #F97316;
+      --color-red: #EF4444;
+      --color-purple: #A855F7;
+      --color-gray: #6B7280;
+      
+      /* Grid */
+      --time-col-width: 52px;
+      --day-col-width: 1fr;
+      --hour-height: 60px;
+      --header-height: 48px;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #141414;
+      --bg-tertiary: #1a1a1a;
+      --text-primary: #f5f5f5;
+      --text-secondary: #a3a3a3;
+      --text-muted: #737373;
+      --border-color: #262626;
+      --border-light: #1f1f1f;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 100%;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .btn:hover {
+      background: var(--bg-tertiary);
+      border-color: var(--text-muted);
+    }
+
+    .btn-icon {
+      padding: 8px;
+    }
+
+    .btn svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .select-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .select-wrapper select {
+      padding: 8px 28px 8px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+
+    /* Calendar Grid */
+    .calendar-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: var(--time-col-width) repeat(7, var(--day-col-width));
+      min-height: calc(24 * var(--hour-height) + var(--header-height));
+      position: relative;
+    }
+
+    /* Header */
+    .calendar-header {
+      display: contents;
+    }
+
+    .header-cell {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 8px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .header-cell:first-child {
+      border-right: 1px solid var(--border-color);
+    }
+
+    .header-cell:not(:first-child) {
+      border-left: 1px solid var(--border-light);
+    }
+
+    .header-cell.weekend {
+      color: var(--color-red);
+    }
+
+    /* Time column */
+    .time-cell {
+      grid-column: 1;
+      height: var(--hour-height);
+      padding: 0 8px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      border-right: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      transform: translateY(-8px);
+    }
+
+    /* Day columns */
+    .day-column {
+      position: relative;
+      border-left: 1px solid var(--border-light);
+    }
+
+    .hour-slot {
+      height: var(--hour-height);
+      border-bottom: 1px solid var(--border-light);
+      position: relative;
+    }
+
+    .hour-slot::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      border-bottom: 1px dashed var(--border-light);
+    }
+
+    /* Events */
+    .event {
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .event:hover {
+      transform: scale(1.02);
+      box-shadow: var(--shadow-md);
+      z-index: 15;
+    }
+
+    .event-title {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .event-time {
+      font-size: 10px;
+      opacity: 0.8;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .event.dragging {
+      opacity: 0.8;
+      z-index: 100;
+      cursor: grabbing;
+    }
+
+    .event-resize-handle {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 8px;
+      cursor: ns-resize;
+      border-radius: 0 0 6px 6px;
+    }
+
+    .event-resize-handle:hover {
+      background: rgba(0,0,0,0.1);
+    }
+
+    .event.resizing {
+      opacity: 0.8;
+      z-index: 100;
+    }
+
+    .event.selected {
+      outline: 2px solid var(--text-primary);
+      outline-offset: 1px;
+    }
+
+    /* Selection overlay */
+    .selection-overlay {
+      position: absolute;
+      background: var(--color-blue);
+      opacity: 0.3;
+      border-radius: 6px;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* Popup */
+    .popup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .popup-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .popup {
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      width: 90%;
+      max-width: 400px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: scale(0.95) translateY(10px);
+      transition: transform 0.2s ease;
+    }
+
+    .popup-overlay.active .popup {
+      transform: scale(1) translateY(0);
+    }
+
+    .popup-header {
+      padding: 20px 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .popup-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .popup-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      transition: all 0.15s ease;
+    }
+
+    .popup-close:hover {
+      background: var(--border-color);
+      color: var(--text-primary);
+    }
+
+    .popup-close svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .popup-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .form-input {
+      padding: 12px;
+      font-size: 14px;
+      font-family: inherit;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: border-color 0.15s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--color-blue);
+    }
+
+    .form-textarea {
+      min-height: 80px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .day-checkboxes {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .day-checkbox {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 36px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-primary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      color: var(--text-secondary);
+    }
+
+    .day-checkbox:hover {
+      border-color: var(--text-muted);
+    }
+
+    .day-checkbox.selected {
+      background: var(--text-primary);
+      color: var(--bg-primary);
+      border-color: var(--text-primary);
+    }
+
+    .day-checkbox.current {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .color-picker {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .color-option {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: all 0.15s ease;
+    }
+
+    .color-option:hover {
+      transform: scale(1.1);
+    }
+
+    .color-option.selected {
+      border-color: var(--text-primary);
+    }
+
+    .popup-footer {
+      padding: 0 20px 20px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .popup-footer .btn {
+      flex: 1;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .btn-primary {
+      background: var(--color-blue);
+      border-color: var(--color-blue);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      border-color: #2563eb;
+    }
+
+    .btn-danger {
+      background: var(--color-red);
+      border-color: var(--color-red);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+      border-color: #dc2626;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--text-primary);
+      color: var(--bg-primary);
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      z-index: 2000;
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      :root {
+        --time-col-width: 44px;
+        --hour-height: 50px;
+      }
+
+      .toolbar {
+        flex-wrap: wrap;
+        padding: 10px 12px;
+      }
+
+      .header-cell {
+        font-size: 11px;
+        padding: 8px 4px;
+      }
+
+      .time-cell {
+        font-size: 10px;
+        padding: 0 4px;
+      }
+
+      .event {
+        font-size: 11px;
+        padding: 3px 6px;
+      }
+
+      .btn {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+
+      .btn span {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="select-wrapper">
+          <span>週の始まり:</span>
+          <select id="week-start">
+            <option value="monday">月曜日</option>
+            <option value="tuesday">火曜日</option>
+            <option value="wednesday">水曜日</option>
+            <option value="thursday">木曜日</option>
+            <option value="friday">金曜日</option>
+            <option value="saturday">土曜日</option>
+            <option value="sunday">日曜日</option>
+          </select>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn" id="theme-toggle" title="テーマ切替">
+          <svg viewBox="0 0 24 24" class="icon-sun">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg viewBox="0 0 24 24" class="icon-moon" style="display:none;">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <span>テーマ</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="calendar-wrapper" id="calendar-wrapper">
+      <div class="calendar" id="calendar">
+        <!-- Header -->
+        <div class="calendar-header" id="calendar-header"></div>
+        <!-- Grid will be generated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Popup -->
+  <div class="popup-overlay" id="popup-overlay">
+    <div class="popup">
+      <div class="popup-header">
+        <h2 class="popup-title" id="popup-title">イベントを作成</h2>
+        <button class="popup-close" id="popup-close">
+          <svg viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="popup-body">
+        <div class="form-group">
+          <label class="form-label">タイトル</label>
+          <input type="text" class="form-input" id="event-title" placeholder="例: 仕事、勉強、運動">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">開始時刻</label>
+            <input type="time" class="form-input" id="event-start">
+          </div>
+          <div class="form-group">
+            <label class="form-label">終了時刻</label>
+            <input type="time" class="form-input" id="event-end">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">カラー</label>
+          <div class="color-picker" id="color-picker">
+            <div class="color-option selected" data-color="#CCB6A6" style="background:#CCB6A6"></div>
+            <div class="color-option" data-color="#DBCBC4" style="background:#DBCBC4"></div>
+            <div class="color-option" data-color="#FAEFE5" style="background:#FAEFE5"></div>
+            <div class="color-option" data-color="#D3DBD2" style="background:#D3DBD2"></div>
+            <div class="color-option" data-color="#D1DBDA" style="background:#D1DBDA"></div>
+            <div class="color-option" data-color="#D4B5B0" style="background:#D4B5B0"></div>
+            <div class="color-option" data-color="#C5C1D6" style="background:#C5C1D6"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">メモ</label>
+          <textarea class="form-input form-textarea" id="event-memo" placeholder="自由にメモを入力..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">他の曜日にもコピー</label>
+          <div class="day-checkboxes" id="day-checkboxes"></div>
+        </div>
+      </div>
+      <div class="popup-footer">
+        <button class="btn btn-danger" id="delete-btn" style="display:none;">削除</button>
+        <button class="btn btn-primary" id="save-btn">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ============================================
+    // State
+    // ============================================
+    const STORAGE_KEY = 'timetable-widget-data';
+    
+    let state = {
+      settings: {
+        weekStartsOn: 'monday',
+        theme: 'light'
+      },
+      events: []
+    };
+
+    let editingEventId = null;
+    let isDragging = false;
+    let dragStartDay = null;
+    let dragStartY = null;
+    let selectionEl = null;
+
+    // Event drag/move/resize state
+    let isMovingEvent = false;
+    let isResizingEvent = false;
+    let movingEventId = null;
+    let moveStartY = null;
+    let moveStartX = null;
+    let moveStartDay = null;
+    let moveOriginalStart = null;
+    let moveOriginalEnd = null;
+    let resizeOriginalEnd = null;
+    let hasMoved = false;
+    let pendingRender = null;
+
+    // Selected event for keyboard shortcuts
+    let selectedEventId = null;
+
+    // 全曜日の基本配列（月曜始まり）
+    const ALL_DAYS = ['月', '火', '水', '木', '金', '土', '日'];
+    const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+    function getDaysForWeekStart(weekStart) {
+      const startIndex = DAY_KEYS.indexOf(weekStart);
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        days.push(ALL_DAYS[(startIndex + i) % 7]);
+      }
+      return days;
+    }
+
+    function getWeekendIndices(weekStart) {
+      const days = getDaysForWeekStart(weekStart);
+      const indices = [];
+      days.forEach((day, idx) => {
+        if (day === '土' || day === '日') {
+          indices.push(idx);
+        }
+      });
+      return indices;
+    }
+
+    // ============================================
+    // Utilities
+    // ============================================
+    function generateId() {
+      return 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    }
+
+    function timeToMinutes(time) {
+      const [h, m] = time.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function minutesToTime(mins) {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    }
+
+    function snapToGrid(minutes, gridSize = 15) {
+      return Math.round(minutes / gridSize) * gridSize;
+    }
+
+    function getContrastColor(hexColor) {
+      const r = parseInt(hexColor.slice(1, 3), 16);
+      const g = parseInt(hexColor.slice(3, 5), 16);
+      const b = parseInt(hexColor.slice(5, 7), 16);
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      return luminance > 0.5 ? '#000000' : '#ffffff';
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // ============================================
+    // Storage
+    // ============================================
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          state = { ...state, ...parsed };
+        }
+      } catch (e) {
+        console.error('Failed to load state:', e);
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('Failed to save state:', e);
+      }
+    }
+
+    // ============================================
+    // Rendering
+    // ============================================
+    function renderCalendar() {
+      const calendar = document.getElementById('calendar');
+      const header = document.getElementById('calendar-header');
+      
+      // Clear previous content
+      calendar.innerHTML = '';
+      
+      // Create header
+      const days = getDaysForWeekStart(state.settings.weekStartsOn);
+      const weekendIndices = getWeekendIndices(state.settings.weekStartsOn);
+      
+      let headerHTML = '<div class="header-cell">時間</div>';
+      days.forEach((day, idx) => {
+        const isWeekend = weekendIndices.includes(idx);
+        headerHTML += `<div class="header-cell${isWeekend ? ' weekend' : ''}">${day}</div>`;
+      });
+      calendar.innerHTML = headerHTML;
+
+      // Create time cells and day columns
+      for (let hour = 0; hour < 24; hour++) {
+        // Time cell
+        const timeCell = document.createElement('div');
+        timeCell.className = 'time-cell';
+        timeCell.style.gridRow = `${hour + 2}`;
+        timeCell.textContent = `${hour}:00`;
+        calendar.appendChild(timeCell);
+      }
+
+      // Create day columns
+      for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+        const dayCol = document.createElement('div');
+        dayCol.className = 'day-column';
+        dayCol.dataset.day = dayIdx;
+        dayCol.style.gridColumn = `${dayIdx + 2}`;
+        dayCol.style.gridRow = '2 / span 24';
+
+        // Hour slots
+        for (let hour = 0; hour < 24; hour++) {
+          const slot = document.createElement('div');
+          slot.className = 'hour-slot';
+          slot.dataset.hour = hour;
+          dayCol.appendChild(slot);
+        }
+
+        calendar.appendChild(dayCol);
+      }
+
+      renderEvents();
+      setupDragListeners();
+    }
+
+    function renderEvents() {
+      // Remove existing events
+      document.querySelectorAll('.event').forEach(el => el.remove());
+
+      // Group events by day to handle overlaps
+      const eventsByDay = {};
+      state.events.forEach(evt => {
+        if (!eventsByDay[evt.day]) eventsByDay[evt.day] = [];
+        eventsByDay[evt.day].push(evt);
+      });
+
+      Object.keys(eventsByDay).forEach(day => {
+        const dayEvents = eventsByDay[day];
+        const positioned = positionOverlappingEvents(dayEvents);
+        
+        positioned.forEach(({ event, column, totalColumns }) => {
+          renderEvent(event, column, totalColumns);
+        });
+      });
+
+      // Apply selected state
+      if (selectedEventId) {
+        const selectedEl = document.querySelector(`.event[data-id="${selectedEventId}"]`);
+        if (selectedEl) selectedEl.classList.add('selected');
+      }
+    }
+
+    function positionOverlappingEvents(events) {
+      if (!events.length) return [];
+
+      // Sort by start time
+      const sorted = [...events].sort((a, b) => 
+        timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+      );
+
+      const result = [];
+      const columns = [];
+
+      sorted.forEach(event => {
+        const startMins = timeToMinutes(event.startTime);
+        const endMins = timeToMinutes(event.endTime);
+
+        // Find first available column
+        let col = 0;
+        while (columns[col] && columns[col] > startMins) {
+          col++;
+        }
+
+        columns[col] = endMins;
+        result.push({ event, column: col });
+      });
+
+      const totalColumns = columns.length;
+      return result.map(r => ({ ...r, totalColumns }));
+    }
+
+    function renderEvent(event, column = 0, totalColumns = 1) {
+      const dayCol = document.querySelector(`.day-column[data-day="${event.day}"]`);
+      if (!dayCol) return;
+
+      const startMins = timeToMinutes(event.startTime);
+      const endMins = timeToMinutes(event.endTime);
+      const duration = endMins - startMins;
+
+      const hourHeight = 60; // var(--hour-height)
+      const top = (startMins / 60) * hourHeight;
+      const height = Math.max((duration / 60) * hourHeight, 24);
+
+      const el = document.createElement('div');
+      el.className = 'event';
+      el.dataset.id = event.id;
+      el.style.top = `${top}px`;
+      el.style.height = `${height}px`;
+      el.style.backgroundColor = event.color;
+      el.style.color = getContrastColor(event.color);
+
+      // Handle overlapping
+      if (totalColumns > 1) {
+        const width = (100 / totalColumns) - 2;
+        const left = column * (100 / totalColumns) + 1;
+        el.style.left = `${left}%`;
+        el.style.right = 'auto';
+        el.style.width = `${width}%`;
+      }
+
+      el.innerHTML = `
+        <div class="event-title">${event.title}</div>
+        <div class="event-time">${event.startTime} - ${event.endTime}</div>
+        <div class="event-resize-handle" data-id="${event.id}"></div>
+      `;
+
+      // Click to edit (only if not dragged)
+      el.addEventListener('click', (e) => {
+        if (e.target.classList.contains('event-resize-handle')) return;
+        if (hasMoved) return;
+        e.stopPropagation();
+        selectedEventId = event.id;
+        openPopup(event);
+      });
+
+      // Drag to move
+      el.addEventListener('mousedown', (e) => handleEventMoveStart(e, event));
+      el.addEventListener('touchstart', (e) => handleEventMoveStart(e, event), { passive: false });
+
+      // Resize handle
+      const resizeHandle = el.querySelector('.event-resize-handle');
+      resizeHandle.addEventListener('mousedown', (e) => handleEventResizeStart(e, event));
+      resizeHandle.addEventListener('touchstart', (e) => handleEventResizeStart(e, event), { passive: false });
+
+      dayCol.appendChild(el);
+    }
+
+    // ============================================
+    // Event Move
+    // ============================================
+    const DRAG_THRESHOLD = 5; // pixels before considering it a drag
+
+    function handleEventMoveStart(e, event) {
+      if (e.target.classList.contains('event-resize-handle')) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const eventEl = e.currentTarget;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+
+      isMovingEvent = true;
+      hasMoved = false;
+      movingEventId = event.id;
+      selectedEventId = event.id;
+      moveStartY = clientY;
+      moveStartX = clientX;
+      moveStartDay = event.day;
+      moveOriginalStart = timeToMinutes(event.startTime);
+      moveOriginalEnd = timeToMinutes(event.endTime);
+
+      document.addEventListener('mousemove', handleEventMove);
+      document.addEventListener('touchmove', handleEventMove, { passive: false });
+      document.addEventListener('mouseup', handleEventMoveEnd);
+      document.addEventListener('touchend', handleEventMoveEnd);
+    }
+
+    function handleEventMove(e) {
+      if (!isMovingEvent || !movingEventId) return;
+      e.preventDefault();
+
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      
+      // Check if we've moved enough to consider it a drag
+      const deltaFromStart = Math.sqrt(
+        Math.pow(clientX - moveStartX, 2) + Math.pow(clientY - moveStartY, 2)
+      );
+      
+      if (!hasMoved && deltaFromStart < DRAG_THRESHOLD) {
+        return; // Not a drag yet, might be a click
+      }
+      
+      if (!hasMoved) {
+        hasMoved = true;
+        const eventEl = document.querySelector(`.event[data-id="${movingEventId}"]`);
+        if (eventEl) eventEl.classList.add('dragging');
+      }
+
+      const hourHeight = 60;
+      const deltaY = clientY - moveStartY;
+      const deltaMins = snapToGrid((deltaY / hourHeight) * 60);
+
+      const duration = moveOriginalEnd - moveOriginalStart;
+      let newStart = moveOriginalStart + deltaMins;
+      let newEnd = newStart + duration;
+
+      // Clamp to 0-24h
+      if (newStart < 0) {
+        newStart = 0;
+        newEnd = duration;
+      }
+      if (newEnd > 24 * 60) {
+        newEnd = 24 * 60;
+        newStart = newEnd - duration;
+      }
+
+      // Check which day column we're over
+      const dayColumns = document.querySelectorAll('.day-column');
+      let newDay = moveStartDay;
+      dayColumns.forEach(col => {
+        const rect = col.getBoundingClientRect();
+        if (clientX >= rect.left && clientX <= rect.right) {
+          newDay = parseInt(col.dataset.day);
+        }
+      });
+
+      // Update event position directly in DOM for smooth feedback
+      const eventEl = document.querySelector(`.event[data-id="${movingEventId}"]`);
+      if (eventEl) {
+        const newTop = (newStart / 60) * hourHeight;
+        eventEl.style.top = `${newTop}px`;
+        
+        // If day changed, move to new column
+        const evt = state.events.find(ev => ev.id === movingEventId);
+        if (evt && evt.day !== newDay) {
+          evt.day = newDay;
+          evt.startTime = minutesToTime(newStart);
+          evt.endTime = minutesToTime(newEnd);
+          // Schedule a render for day change
+          if (!pendingRender) {
+            pendingRender = requestAnimationFrame(() => {
+              renderEvents();
+              const el = document.querySelector(`.event[data-id="${movingEventId}"]`);
+              if (el) el.classList.add('dragging');
+              pendingRender = null;
+            });
+          }
+        } else if (evt) {
+          evt.startTime = minutesToTime(newStart);
+          evt.endTime = minutesToTime(newEnd);
+          // Update time display
+          const timeEl = eventEl.querySelector('.event-time');
+          if (timeEl) {
+            timeEl.textContent = `${evt.startTime} - ${evt.endTime}`;
+          }
+        }
+      }
+    }
+
+    function handleEventMoveEnd(e) {
+      if (!isMovingEvent) return;
+
+      document.removeEventListener('mousemove', handleEventMove);
+      document.removeEventListener('touchmove', handleEventMove);
+      document.removeEventListener('mouseup', handleEventMoveEnd);
+      document.removeEventListener('touchend', handleEventMoveEnd);
+
+      const el = document.querySelector(`.event[data-id="${movingEventId}"]`);
+      if (el) el.classList.remove('dragging');
+
+      if (hasMoved) {
+        saveState();
+        renderEvents();
+      }
+
+      isMovingEvent = false;
+      movingEventId = null;
+      // Reset hasMoved after a short delay to allow click event to check it
+      setTimeout(() => { hasMoved = false; }, 10);
+    }
+
+    // ============================================
+    // Event Resize
+    // ============================================
+    function handleEventResizeStart(e, event) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const eventEl = e.target.closest('.event');
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      isResizingEvent = true;
+      movingEventId = event.id;
+      moveStartY = clientY;
+      moveOriginalStart = timeToMinutes(event.startTime);
+      resizeOriginalEnd = timeToMinutes(event.endTime);
+
+      eventEl.classList.add('resizing');
+
+      document.addEventListener('mousemove', handleEventResize);
+      document.addEventListener('touchmove', handleEventResize, { passive: false });
+      document.addEventListener('mouseup', handleEventResizeEnd);
+      document.addEventListener('touchend', handleEventResizeEnd);
+    }
+
+    function handleEventResize(e) {
+      if (!isResizingEvent || !movingEventId) return;
+      e.preventDefault();
+
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const deltaY = clientY - moveStartY;
+      const hourHeight = 60;
+      const deltaMins = snapToGrid((deltaY / hourHeight) * 60);
+
+      let newEnd = resizeOriginalEnd + deltaMins;
+
+      // Minimum 15 mins, max 24h
+      if (newEnd - moveOriginalStart < 15) {
+        newEnd = moveOriginalStart + 15;
+      }
+      if (newEnd > 24 * 60) {
+        newEnd = 24 * 60;
+      }
+
+      const evt = state.events.find(ev => ev.id === movingEventId);
+      if (evt) {
+        evt.endTime = minutesToTime(newEnd);
+        renderEvents();
+        const el = document.querySelector(`.event[data-id="${movingEventId}"]`);
+        if (el) el.classList.add('resizing');
+      }
+    }
+
+    function handleEventResizeEnd(e) {
+      if (!isResizingEvent) return;
+
+      document.removeEventListener('mousemove', handleEventResize);
+      document.removeEventListener('touchmove', handleEventResize);
+      document.removeEventListener('mouseup', handleEventResizeEnd);
+      document.removeEventListener('touchend', handleEventResizeEnd);
+
+      const el = document.querySelector(`.event[data-id="${movingEventId}"]`);
+      if (el) el.classList.remove('resizing');
+
+      isResizingEvent = false;
+      movingEventId = null;
+
+      saveState();
+      renderEvents();
+    }
+
+    // ============================================
+    // Drag to Create
+    // ============================================
+    function setupDragListeners() {
+      const dayColumns = document.querySelectorAll('.day-column');
+
+      dayColumns.forEach(col => {
+        col.addEventListener('mousedown', handleDragStart);
+        col.addEventListener('touchstart', handleDragStart, { passive: false });
+      });
+
+      // Click on calendar background to deselect
+      document.getElementById('calendar').addEventListener('click', (e) => {
+        if (!e.target.closest('.event')) {
+          selectedEventId = null;
+          document.querySelectorAll('.event.selected').forEach(el => el.classList.remove('selected'));
+        }
+      });
+
+      document.addEventListener('mousemove', handleDragMove);
+      document.addEventListener('touchmove', handleDragMove, { passive: false });
+      document.addEventListener('mouseup', handleDragEnd);
+      document.addEventListener('touchend', handleDragEnd);
+    }
+
+    function handleDragStart(e) {
+      // Ignore if clicking on an event
+      if (e.target.closest('.event')) return;
+
+      e.preventDefault();
+      const col = e.currentTarget;
+      const rect = col.getBoundingClientRect();
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      isDragging = true;
+      dragStartDay = parseInt(col.dataset.day);
+      dragStartY = clientY - rect.top;
+
+      // Create selection overlay
+      selectionEl = document.createElement('div');
+      selectionEl.className = 'selection-overlay';
+      col.appendChild(selectionEl);
+
+      updateSelection(clientY - rect.top);
+    }
+
+    function handleDragMove(e) {
+      if (!isDragging || !selectionEl) return;
+
+      e.preventDefault();
+      const col = document.querySelector(`.day-column[data-day="${dragStartDay}"]`);
+      const rect = col.getBoundingClientRect();
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const currentY = clientY - rect.top;
+
+      updateSelection(currentY);
+    }
+
+    function updateSelection(currentY) {
+      const hourHeight = 60;
+      const minY = Math.min(dragStartY, currentY);
+      const maxY = Math.max(dragStartY, currentY);
+
+      // Snap to 15-minute grid
+      const startMins = snapToGrid((minY / hourHeight) * 60);
+      const endMins = snapToGrid((maxY / hourHeight) * 60);
+
+      const top = (startMins / 60) * hourHeight;
+      const height = Math.max(((endMins - startMins) / 60) * hourHeight, 15);
+
+      selectionEl.style.top = `${top}px`;
+      selectionEl.style.height = `${height}px`;
+      selectionEl.style.left = '2px';
+      selectionEl.style.right = '2px';
+    }
+
+    function handleDragEnd(e) {
+      if (!isDragging || !selectionEl) return;
+
+      const col = document.querySelector(`.day-column[data-day="${dragStartDay}"]`);
+      const rect = col.getBoundingClientRect();
+      const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+      const endY = clientY - rect.top;
+
+      const hourHeight = 60;
+      const minY = Math.min(dragStartY, endY);
+      const maxY = Math.max(dragStartY, endY);
+
+      const startMins = Math.max(0, snapToGrid((minY / hourHeight) * 60));
+      let endMins = Math.min(24 * 60, snapToGrid((maxY / hourHeight) * 60));
+
+      // Minimum 15 minutes
+      if (endMins - startMins < 15) {
+        endMins = startMins + 15;
+      }
+
+      // Clean up
+      selectionEl.remove();
+      selectionEl = null;
+      isDragging = false;
+
+      // Open popup for new event
+      openPopup({
+        day: dragStartDay,
+        startTime: minutesToTime(startMins),
+        endTime: minutesToTime(endMins),
+        color: '#CCB6A6'
+      });
+    }
+
+    // ============================================
+    // Popup
+    // ============================================
+    function openPopup(event) {
+      const overlay = document.getElementById('popup-overlay');
+      const title = document.getElementById('popup-title');
+      const titleInput = document.getElementById('event-title');
+      const startInput = document.getElementById('event-start');
+      const endInput = document.getElementById('event-end');
+      const memoInput = document.getElementById('event-memo');
+      const deleteBtn = document.getElementById('delete-btn');
+      const colorOptions = document.querySelectorAll('.color-option');
+      const dayCheckboxes = document.getElementById('day-checkboxes');
+
+      if (event.id) {
+        // Editing existing event
+        editingEventId = event.id;
+        title.textContent = 'イベントを編集';
+        titleInput.value = event.title;
+        memoInput.value = event.memo || '';
+        deleteBtn.style.display = 'block';
+      } else {
+        // Creating new event
+        editingEventId = null;
+        title.textContent = 'イベントを作成';
+        titleInput.value = '';
+        memoInput.value = '';
+        deleteBtn.style.display = 'none';
+      }
+
+      startInput.value = event.startTime;
+      endInput.value = event.endTime;
+
+      // Set color
+      colorOptions.forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.color === event.color);
+      });
+
+      // Store temp data
+      overlay.dataset.day = event.day;
+
+      // Render day checkboxes for copy
+      const days = getDaysForWeekStart(state.settings.weekStartsOn);
+      dayCheckboxes.innerHTML = days.map((dayName, idx) => {
+        const isCurrent = idx === event.day;
+        return `<button class="day-checkbox${isCurrent ? ' current' : ''}" data-day="${idx}">${dayName}</button>`;
+      }).join('');
+
+      dayCheckboxes.querySelectorAll('.day-checkbox').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          btn.classList.toggle('selected');
+        });
+      });
+
+      overlay.classList.add('active');
+      setTimeout(() => titleInput.focus(), 100);
+    }
+
+    function closePopup() {
+      const overlay = document.getElementById('popup-overlay');
+      overlay.classList.remove('active');
+      editingEventId = null;
+    }
+
+    function saveEvent() {
+      const overlay = document.getElementById('popup-overlay');
+      const titleInput = document.getElementById('event-title');
+      const startInput = document.getElementById('event-start');
+      const endInput = document.getElementById('event-end');
+      const memoInput = document.getElementById('event-memo');
+      const selectedColor = document.querySelector('.color-option.selected');
+      const selectedDays = document.querySelectorAll('.day-checkbox.selected:not(.current)');
+
+      const title = titleInput.value.trim();
+
+      const eventData = {
+        title,
+        day: parseInt(overlay.dataset.day),
+        startTime: startInput.value,
+        endTime: endInput.value,
+        color: selectedColor ? selectedColor.dataset.color : '#CCB6A6',
+        memo: memoInput.value.trim()
+      };
+
+      if (editingEventId) {
+        // Update existing
+        const idx = state.events.findIndex(e => e.id === editingEventId);
+        if (idx !== -1) {
+          state.events[idx] = { ...state.events[idx], ...eventData };
+        }
+      } else {
+        // Create new
+        state.events.push({
+          id: generateId(),
+          ...eventData
+        });
+      }
+
+      // Copy to other days
+      if (selectedDays.length > 0) {
+        selectedDays.forEach(dayBtn => {
+          const copyDay = parseInt(dayBtn.dataset.day);
+          state.events.push({
+            id: generateId(),
+            ...eventData,
+            day: copyDay
+          });
+        });
+      }
+
+      saveState();
+      renderEvents();
+      closePopup();
+      
+      const copyCount = selectedDays.length;
+      if (copyCount > 0) {
+        showToast(`イベントを${copyCount + 1}日分作成しました`);
+      } else {
+        showToast(editingEventId ? 'イベントを更新しました' : 'イベントを作成しました');
+      }
+    }
+
+    function deleteEvent() {
+      if (!editingEventId) return;
+
+      state.events = state.events.filter(e => e.id !== editingEventId);
+      saveState();
+      renderEvents();
+      closePopup();
+      showToast('イベントを削除しました');
+    }
+
+    function duplicateEvent(eventId) {
+      const event = state.events.find(e => e.id === eventId);
+      if (!event) return;
+
+      const newEvent = {
+        ...event,
+        id: generateId(),
+        startTime: event.startTime,
+        endTime: event.endTime
+      };
+
+      // Offset by 15 minutes if possible
+      const startMins = timeToMinutes(event.endTime);
+      const duration = timeToMinutes(event.endTime) - timeToMinutes(event.startTime);
+      let newStartMins = startMins;
+      let newEndMins = newStartMins + duration;
+
+      if (newEndMins > 24 * 60) {
+        // Place before instead
+        newEndMins = timeToMinutes(event.startTime);
+        newStartMins = newEndMins - duration;
+        if (newStartMins < 0) {
+          newStartMins = 0;
+          newEndMins = duration;
+        }
+      }
+
+      newEvent.startTime = minutesToTime(newStartMins);
+      newEvent.endTime = minutesToTime(newEndMins);
+
+      state.events.push(newEvent);
+      selectedEventId = newEvent.id;
+      saveState();
+      renderEvents();
+      showToast('イベントを複製しました');
+    }
+
+    // ============================================
+    // Settings
+    // ============================================
+    function setWeekStart(value) {
+      state.settings.weekStartsOn = value;
+      saveState();
+      renderCalendar();
+    }
+
+    function toggleTheme() {
+      const newTheme = state.settings.theme === 'light' ? 'dark' : 'light';
+      state.settings.theme = newTheme;
+      document.documentElement.dataset.theme = newTheme;
+      
+      const sunIcon = document.querySelector('.icon-sun');
+      const moonIcon = document.querySelector('.icon-moon');
+      sunIcon.style.display = newTheme === 'light' ? 'block' : 'none';
+      moonIcon.style.display = newTheme === 'dark' ? 'block' : 'none';
+      
+      saveState();
+    }
+
+    // ============================================
+    // Event Listeners
+    // ============================================
+    function setupEventListeners() {
+      // Popup
+      document.getElementById('popup-overlay').addEventListener('click', (e) => {
+        if (e.target.id === 'popup-overlay') closePopup();
+      });
+      document.getElementById('popup-close').addEventListener('click', closePopup);
+      document.getElementById('save-btn').addEventListener('click', saveEvent);
+      document.getElementById('delete-btn').addEventListener('click', deleteEvent);
+
+      // Color picker
+      document.querySelectorAll('.color-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+        });
+      });
+
+      // Settings
+      document.getElementById('week-start').addEventListener('change', (e) => {
+        setWeekStart(e.target.value);
+      });
+
+      document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+
+      // Export / Import removed
+
+      // Keyboard
+      document.addEventListener('keydown', (e) => {
+        // Close popup on Escape
+        if (e.key === 'Escape') {
+          closePopup();
+        }
+        // Save on Enter in popup
+        if (e.key === 'Enter' && document.getElementById('popup-overlay').classList.contains('active')) {
+          // Don't save if focus is on textarea
+          if (document.activeElement.tagName !== 'TEXTAREA') {
+            saveEvent();
+          }
+        }
+        // Delete event on Backspace/Delete
+        if ((e.key === 'Backspace' || e.key === 'Delete') && selectedEventId) {
+          // Don't delete if popup is open or typing in input
+          if (document.getElementById('popup-overlay').classList.contains('active')) return;
+          if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+          
+          e.preventDefault();
+          state.events = state.events.filter(evt => evt.id !== selectedEventId);
+          selectedEventId = null;
+          saveState();
+          renderEvents();
+          showToast('イベントを削除しました');
+        }
+        // Duplicate event on Cmd+D / Ctrl+D
+        if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+          if (selectedEventId && !document.getElementById('popup-overlay').classList.contains('active')) {
+            e.preventDefault();
+            duplicateEvent(selectedEventId);
+          }
+        }
+      });
+    }
+
+    // ============================================
+    // Initialization
+    // ============================================
+    function init() {
+      loadState();
+      
+      // Apply saved settings
+      document.documentElement.dataset.theme = state.settings.theme;
+      document.getElementById('week-start').value = state.settings.weekStartsOn;
+      
+      const sunIcon = document.querySelector('.icon-sun');
+      const moonIcon = document.querySelector('.icon-moon');
+      sunIcon.style.display = state.settings.theme === 'light' ? 'block' : 'none';
+      moonIcon.style.display = state.settings.theme === 'dark' ? 'block' : 'none';
+
+      renderCalendar();
+      setupEventListeners();
+
+      // Scroll to 5:00
+      setTimeout(() => {
+        const wrapper = document.getElementById('calendar-wrapper');
+        const hourHeight = 60;
+        wrapper.scrollTop = 5 * hourHeight;
+      }, 100);
+    }
+
+    // Start
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
